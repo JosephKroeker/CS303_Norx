@@ -113,43 +113,43 @@
 //*****************************************************************************
 // Main Algorithm Prototypes
 //*****************************************************************************
-extern void NORXEnc(word_t K[4], nonce_t N, word_t A[], word_t M[], word_t Z[]);
-extern void NORXDec(word_t K[4], nonce_t N, word_t A[], word_t C[], word_t Z[], tag_t T);
+extern void NORXEnc(word_t K[], word_t N[], word_t A[], word_t M[], word_t Z[]);
+extern void NORXDec(word_t K[], word_t N[], word_t A[], word_t C[], word_t Z[], word_t T[]);
 
 //***************************************************************************
 // Initialisation prototypes
 //***************************************************************************
-extern void initialise(word_t* pwKIni[4], word_t* pwNIni[4], word_t* pwSIni[16]);
+extern void initialise(word_t* pwKIni, word_t* pwNIni, word_t* pwSIni);
 
 //***************************************************************************
 // Absorb Prototypes
 //***************************************************************************
-extern void absorb(word_t* pwSAbs[16], word_t* pwAZ[], uint32_t absDomain);
+extern void absorb(word_t* pwSAbs, word_t* pwAZ, uint32_t absDomain);
 
 //***************************************************************************
 // Branch Protoypes
 //***************************************************************************
-extern void branch(const word_t* pwSBrch[16], word_t* pwSBar[16], 
+extern void branch(const word_t* pwSBrch, word_t* pwSBar, 
                    uint32_t msgSize, uint32_t brchDomain);
 
 //***************************************************************************
 // Encrypt/Decrypt Prototypes
 //***************************************************************************
-extern void encrypt(word_t* pwSbarEnc[16], word_t* pwM[], uint32_t encDomain);
-extern void decrypt(word_t* pwSbarDec[16], word_t* pwC[], uint32_t decDomain);
-extern void F(word_t* pwS[16]);
-extern void diag(word_t* pwS[16]);
-extern void col(word_t* pwS[16]);
-extern void G(word_t* pwS[16], uint32_t s0, uint32_t s1, uint32_t s2, uint32_t s3);
+extern void encrypt(word_t* pwSbarEnc, word_t* pwM, uint32_t encDomain);
+extern void decrypt(word_t* pwSbarDec, word_t* pwC, uint32_t decDomain);
+extern void F(word_t* pwS);
+extern void diag(word_t* pwS);
+extern void col(word_t* pwS);
+extern void G(word_t* pwS, uint32_t s0, uint32_t s1, uint32_t s2, uint32_t s3);
 extern word_t H(word_t x, word_t y);
 
 //***************************************************************************
 // Merge prototypes
 //***************************************************************************
-extern void merge(word_t* pwSbarMrg[16], uint32_t msgSize, uint32_t mrgDomain);
+extern void merge(word_t* pwSbarMrg, uint32_t msgSize, uint32_t mrgDomain);
 
 //***************************************************************************
 // Finalise Protypes
 //***************************************************************************
-extern tag_t finalise(word_t* pwSFin[16], nkey_t K, uint32_t finDomain);
+extern void finalise(word_t* pwSFin, word_t* K, uint32_t finDomain, word_t outTag);
 
