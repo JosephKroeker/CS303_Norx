@@ -117,39 +117,23 @@ extern void NORXEnc(word_t K[], word_t N[], word_t A[], word_t M[], word_t Z[]);
 extern void NORXDec(word_t K[], word_t N[], word_t A[], word_t C[], word_t Z[], word_t T[]);
 
 //***************************************************************************
-// Initialisation prototypes
+// High Level Function Prototypes
 //***************************************************************************
 extern void initialise(word_t* pwKIni, word_t* pwNIni, word_t* pwSIni);
-
-//***************************************************************************
-// Absorb Prototypes
-//***************************************************************************
 extern void absorb(word_t* pwSAbs, word_t* pwAZ, uint32_t absDomain);
-
-//***************************************************************************
-// Branch Protoypes
-//***************************************************************************
 extern void branch(const word_t* pwSBrch, word_t* pwSBar, 
                    uint32_t msgSize, uint32_t brchDomain);
-
-//***************************************************************************
-// Encrypt/Decrypt Prototypes
-//***************************************************************************
 extern void encrypt(word_t* pwSbarEnc, word_t* pwM, uint32_t encDomain);
 extern void decrypt(word_t* pwSbarDec, word_t* pwC, uint32_t decDomain);
+extern void merge(word_t* pwSbarMrg, uint32_t msgSize, uint32_t mrgDomain);
+extern void finalise(word_t* pwSFin, word_t* K, uint32_t finDomain, word_t outTag);
+
+//***************************************************************************
+// Permutation Function Prototypes
+//***************************************************************************
 extern void F(word_t* pwS);
 extern void diag(word_t* pwS);
 extern void col(word_t* pwS);
 extern void G(word_t* pwS, uint32_t s0, uint32_t s1, uint32_t s2, uint32_t s3);
 extern word_t H(word_t x, word_t y);
-
-//***************************************************************************
-// Merge prototypes
-//***************************************************************************
-extern void merge(word_t* pwSbarMrg, uint32_t msgSize, uint32_t mrgDomain);
-
-//***************************************************************************
-// Finalise Protypes
-//***************************************************************************
-extern void finalise(word_t* pwSFin, word_t* K, uint32_t finDomain, word_t outTag);
-
+extern word_t right(word_t* pwSR);

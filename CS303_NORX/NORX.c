@@ -5,7 +5,7 @@
 * Author -> Joseph Kroeker                                                    *
 * Version -> 1.0 03/10/2018 - Setting Up Core Permutation (3 hours)           *
 *            2.0 03/11/2018 - Adding High Level Prototypes/Functions and      *
-*                              calls in main functions (3 hours)               *
+*                              calls in main functions (3 hours)              *
 *                                                                             *
 ******************************************************************************/
 
@@ -23,10 +23,17 @@
 
 #include "NORX.h"      // NORX defines and prototypes
 
+//***************************************************************************
+//
+// Function -> main
+// Purpose -> test encode and decode functions
+// 
+//***************************************************************************
 int 
 main(void) {
   return 0;
 }
+
 //*****************************************************************************
 //
 // Function -> NORXEnc
@@ -40,9 +47,9 @@ main(void) {
 //*****************************************************************************
 void 
 NORXEnc(word_t K[], word_t N[], word_t A[], word_t M[], word_t Z[]) {
-    word_t S[16] = { 0 };    // State, 4x4 matrix of words
+    word_t S[16] = { 0 };     // State, 4x4 matrix of words
     word_t Sbar[16] = { 0 };  // State bar, 4x4 matrix of words
-    word_t outT[4] = { 0 }; // 4 word tag
+    word_t outT[4] = { 0 };   // 4 word tag
 
     initialise(K, N, S);
     absorb(S, A, 0x01);
@@ -67,9 +74,9 @@ NORXEnc(word_t K[], word_t N[], word_t A[], word_t M[], word_t Z[]) {
 //*****************************************************************************
 void 
 NORXDec(word_t K[], word_t N[], word_t A[], word_t C[], word_t Z[], word_t T[]) {
-    word_t S[16] = { 0 };    // State, 4x4 matrix of words
+    word_t S[16] = { 0 };     // State, 4x4 matrix of words
     word_t Sbar[16] = { 0 };  // State bar, 4x4 matrix of words
-    word_t outT[4] = { 0 }; // 4 word tag
+    word_t outT[4] = { 0 };   // 4 word tag
 
     initialise(K, N, S);
     absorb(S, A, 0x01);
@@ -273,6 +280,37 @@ merge(word_t* pwSbarMrg, uint32_t msgSize, uint32_t mrgDomain) {
 //*****************************************************************************
 void
 finalise(word_t* pwSFin, word_t* K, uint32_t finDomain, word_t outTag) {
+  pwSFin[15] ^= finDomain;
+  F(pwSFin);
 
+  // (s12, s13, s14, s15) ^= k0, k1, k2, k3
+  pwSFin[12] ^= K[12];
+  pwSFin[13] ^= K[13];
+  pwSFin[14] ^= K[14];
+  pwSFin[15] ^= K[15];
+
+  F(pwSFin);
+
+  // (s12, s13, s14, s15) ^= k0, k1, k2, k3
+  pwSFin[12] ^= K[12];
+  pwSFin[13] ^= K[13];
+  pwSFin[14] ^= K[14];
+  pwSFin[15] ^= K[15];
+
+  outTag = right(pwSFin);
+}
+
+//***************************************************************************
+//
+// Function -> right
+// Purpose -> Truncation of bitstring x to its r right-most bits.
+// Inputs
+// 
+//***************************************************************************
+word_t
+right(word_t* pwSR) {
+ word_t rightWord = 0;
+
+ return rightWord;
 }
 
