@@ -28,6 +28,14 @@
   #define PARALLEL  1               // Parallelism degree of 1
   #define TAG_LEN   4 * WORD_LEN    // Tag size of 4 words
 
+
+  //***************************************************************************
+  // Defines for block length and rate for 32 bits
+  //***************************************************************************
+  #define B        512
+  #define R        384
+  #define C        128
+
   //***************************************************************************
   // Define Shifts for G Function for 32 Bits
   //***************************************************************************
@@ -123,7 +131,7 @@ extern void initialise(word_t* pwKIni, word_t* pwNIni, word_t* pwSIni);
 extern void absorb(word_t* pwSAbs, word_t* pwAZ, uint32_t absDomain);
 extern void branch(const word_t* pwSBrch, word_t* pwSBar, 
                    uint32_t msgSize, uint32_t brchDomain);
-extern void encrypt(word_t* pwSbarEnc, word_t* pwM, uint32_t encDomain);
+extern void encrypt(word_t* pwSbarEnc, word_t* pwM, uint32_t encDomain, word_t* pwC);
 extern void decrypt(word_t* pwSbarDec, word_t* pwC, uint32_t decDomain);
 extern void merge(word_t* pwSbarMrg, uint32_t msgSize, uint32_t mrgDomain);
 extern void finalise(word_t* pwSFin, word_t* K, uint32_t finDomain, word_t outTag);

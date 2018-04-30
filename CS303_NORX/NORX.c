@@ -49,12 +49,13 @@ void
 NORXEnc(word_t K[], word_t N[], word_t A[], word_t M[], word_t Z[]) {
     word_t S[16] = { 0 };     // State, 4x4 matrix of words
     word_t Sbar[16] = { 0 };  // State bar, 4x4 matrix of words
+    word_t C[16] = { 0 }      // Final encrypted text
     word_t outT[4] = { 0 };   // 4 word tag
 
     initialise(K, N, S);
     absorb(S, A, 0x01);
     branch(S, Sbar, sizeof(M) / sizeof(word_t) , 0x10);
-    encrypt(Sbar, M , 0x02);
+    encrypt(Sbar, M , 0x02, C);
     merge(Sbar, sizeof(M)/ sizeof(word_t) , 0x20);
     absorb(S, Z, 0x04);
     finalise(S, K, 0x08, outT);
@@ -164,8 +165,17 @@ branch(const word_t* pwSBrch, word_t* pwSBar, uint32_t msgSize, uint32_t brchDom
 //
 //*****************************************************************************
 void
-encrypt(word_t* pwSbarEnc, word_t* pwM, uint32_t encDomain) {
+encrypt(word_t* pwSbarEnc, word_t* pwM, uint32_t encDomain, word_t* pwC) {
+  int i;
+  int m = R;  // given rate value based on word size
+  int b = B;  // given block length for word size
+  int j = 0;  
+  if (sizeof(pwM) > 0) {
+    for (i = 0; i <= m-2; i++) {
+      j = i % (sizeof(pwSbar) / sizeof(word_t));
 
+    }
+  }
 }
 
 //*****************************************************************************
