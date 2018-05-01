@@ -3,9 +3,13 @@
 * File -> NORX.c                                                              *
 * Purpose -> Encrypt and Decrypt text using the NORX algorithm                *
 * Author -> Joseph Kroeker                                                    *
-* Version -> 1.0 03/10/2018 - Setting Up Core Permutation (3 hours)           *
+* Version -> 1.0 03/10/2018 - Setting Up Core Permutation                     *
 *            2.0 03/11/2018 - Adding High Level Prototypes/Functions and      *
-*                              calls in main functions (3 hours)              *
+*                              calls in main functions                        *
+*            3.0 04/07/2018 - Compiling and correcting errors                 *
+*            4.0 04/18/2018 - Fill finalise() and create right()              *
+*            5.0 04/30/2018 - Review of previous functions and corrections    * 
+*                             for functionality                               *
 *                                                                             *
 ******************************************************************************/
 
@@ -31,6 +35,41 @@
 //***************************************************************************
 int 
 main(void) {
+  word_t K[0x10];
+  word_t N[0x30];
+  int i;
+  word_t Test[0x10]; // buffer for testing the different functions 
+
+  // Init K to 0x0, 0x1, ... 0xE, 0xF
+  for (i = 0; i <= 0xF; i++) {
+    K[i] = i;
+  }
+  // Init N to 0x0, 0x1, ... 0x2E, 0x2F 
+  for (i = 0; i <= 0x2F; i++) {
+    N[i] = i;
+  }
+  printf("Shift test\n%x\n", rightRot(1, 1));
+  
+  // Print test key
+  printf("Key : \n");
+  for (i=0; i<=0xF; i++) {
+    printf("%x ", K[i]);
+  } 
+
+  // Print test Nonce
+  printf("\nNonce : \n");
+  for (i = 0; i<= 0x2F; i++) {
+    printf("%x ", N[i]);
+  } 
+
+  // Print test init run
+  // TODO fix this to display given values from NORX instructions
+  // TODO test out different round amounts, indexing may be off
+  initialise(K, N, Test);
+  printf("\nTest Init : \n");
+  for (i=0; i<=0xF; i++) {
+    printf("%x ", Test[i]);
+  }
   return 0;
 }
 
@@ -49,15 +88,19 @@ void
 NORXEnc(word_t K[], word_t N[], word_t A[], word_t M[], word_t Z[]) {
     word_t S[16] = { 0 };     // State, 4x4 matrix of words
     word_t Sbar[16] = { 0 };  // State bar, 4x4 matrix of words
-    word_t C[16] = { 0 }      // Final encrypted text
-    word_t outT[4] = { 0 };   // 4 word tag
+    word_t C[16] = { 0 };      // Final encrypted text
+    word_t outT[TAG_LEN] = { 0 };   // 4 word tag
+
+    uint32_t msgSize = sizeof(M) / sizeof(word_t);
+    uint32_t headSize = sizeof(A) / sizeof(word_t);
+    uint32_t footSize = sizeof(Z) / sizeof (word_t);
 
     initialise(K, N, S);
-    absorb(S, A, 0x01);
-    branch(S, Sbar, sizeof(M) / sizeof(word_t) , 0x10);
+    absorb(S, A, headSize, 0x01);
+    branch(S, Sbar, msgSize , 0x10);
     encrypt(Sbar, M , 0x02, C);
-    merge(Sbar, sizeof(M)/ sizeof(word_t) , 0x20);
-    absorb(S, Z, 0x04);
+    merge(Sbar, S, msgSize , 0x20);
+    absorb(S, Z, footSize, 0x04);
     finalise(S, K, 0x08, outT);
 }
 
@@ -79,12 +122,16 @@ NORXDec(word_t K[], word_t N[], word_t A[], word_t C[], word_t Z[], word_t T[]) 
     word_t Sbar[16] = { 0 };  // State bar, 4x4 matrix of words
     word_t outT[4] = { 0 };   // 4 word tag
 
+    uint32_t encSize = sizeof(C) / sizeof(word_t);
+    uint32_t headSize = sizeof(A) / sizeof(word_t);
+    uint32_t footSize = sizeof(Z) / sizeof (word_t);
+    
     initialise(K, N, S);
-    absorb(S, A, 0x01);
-    branch(S, Sbar, sizeof(C) / sizeof(word_t), 0x10);
+    absorb(S, A, headSize, 0x01);
+    branch(S, Sbar, encSize, 0x10);
     decrypt(Sbar, C, 0x02);
-    merge(Sbar, sizeof(C) / sizeof(word_t), 0x20);
-    absorb(S, Z, 0x04);
+    merge(Sbar, S, encSize, 0x20);
+    absorb(S, Z, footSize, 0x04);
     finalise(S, K, 0x08, outT);
 }
 
@@ -99,6 +146,7 @@ NORXDec(word_t K[], word_t N[], word_t A[], word_t C[], word_t Z[], word_t T[]) 
 //*****************************************************************************
 void
 initialise(word_t* pwKIni, word_t* pwNIni, word_t* pwSIni) {
+    int i;
     pwSIni[0] = pwNIni[0];  
     pwSIni[1] = pwNIni[1];
     pwSIni[2] = pwNIni[2];
@@ -137,7 +185,23 @@ initialise(word_t* pwKIni, word_t* pwNIni, word_t* pwSIni) {
 //
 //*****************************************************************************
 void 
-absorb(word_t* pwSAbs, word_t* pwAZ, uint32_t absDomain) {
+absorb(word_t* pwSAbs, word_t* pwAZ, uint32_t AZSize, uint32_t absDomain) {
+  uint32_t i;
+  uint32_t j;
+  uint32_t m = RATE;  // given rate value based on word size
+  // TODO check functionality, notation is weird in the notes
+  if (AZSize > 0) {
+    for (i = 0; i <= m - 2; i++) {
+      pwSAbs[15] ^= absDomain;
+      F(pwSAbs);
+      for (j = 0; j < AZSize; j++) {
+	 pwSAbs[j] ^= pwAZ[j];
+      } 
+    }
+    pwSAbs[15] ^= absDomain; 
+    F(pwSAbs); 
+    pwSAbs[j + 1] ^= pad(pwAZ[j]);
+  } 
 
 }
 
@@ -152,7 +216,14 @@ absorb(word_t* pwSAbs, word_t* pwAZ, uint32_t absDomain) {
 //*****************************************************************************
 void 
 branch(const word_t* pwSBrch, word_t* pwSBar, uint32_t msgSize, uint32_t brchDomain) {
-
+  if (PARALLEL == 1) {
+    pwSBrch = pwSBar;
+  } 
+  else {
+    //
+    // TODO work with P != 1
+    //
+  } 
 } 
 
 //*****************************************************************************
@@ -166,13 +237,13 @@ branch(const word_t* pwSBrch, word_t* pwSBar, uint32_t msgSize, uint32_t brchDom
 //*****************************************************************************
 void
 encrypt(word_t* pwSbarEnc, word_t* pwM, uint32_t encDomain, word_t* pwC) {
-  int i;
-  int m = R;  // given rate value based on word size
-  int b = B;  // given block length for word size
-  int j = 0;  
+  uint32_t i;
+  uint32_t m = RATE;  // given rate value based on word size
+  uint32_t b = WIDTH;  // given block length for word size
+  uint32_t j = 0;  
   if (sizeof(pwM) > 0) {
     for (i = 0; i <= m-2; i++) {
-      j = i % (sizeof(pwSbar) / sizeof(word_t));
+      j = i % (sizeof(pwSbarEnc) / sizeof(word_t));
 
     }
   }
@@ -201,8 +272,11 @@ decrypt(word_t* pwSbarDec, word_t* pwC, uint32_t decDomain) {
 //*****************************************************************************
 void
 F(word_t* pwS) {
+  int i;
+  for (i = 0; i < RND_NUM; i++) { 
     col(pwS);
     diag(pwS);
+  } 
 }
 
 //*****************************************************************************
@@ -244,16 +318,28 @@ col(word_t* pwS) {
 //
 //*****************************************************************************
 void 
-G(word_t* pwS, uint32_t s0, uint32_t s1, uint32_t s2, uint32_t s3) {
-    pwS[s0] = H(pwS[s0], pwS[s1]);
-    pwS[s3] = (pwS[s0] ^ pwS[s3]) >> R0;
-    pwS[s2] = H(pwS[s2], pwS[s3]); 
-    pwS[s2] = (pwS[s1] ^ pwS[s2]) >> R1;
-    pwS[s1] = H(pwS[s0], pwS[s1]);
-    pwS[s3] = (pwS[s0] ^ pwS[s3]) >> R2;
+G(word_t* pwS, word_t s0, word_t s1, word_t s2, word_t s3) {
+    pwS[s0] = H(pwS[s0], pwS[s1]);        
+    pwS[s3] = rightRot((pwS[s0] ^ pwS[s3]), R0);  
+    pwS[s2] = H(pwS[s2], pwS[s3]);        
+    pwS[s2] = rightRot((pwS[s1] ^ pwS[s2]), R1); 
+    pwS[s1] = H(pwS[s0], pwS[s1]);        
+    pwS[s3] = rightRot((pwS[s0] ^ pwS[s3]), R2);
     pwS[s2] = H(pwS[s2], pwS[s3]);
-    pwS[s1] = (pwS[s1] ^ pwS[s2]) >> R3;
+    pwS[s1] = rightRot((pwS[s1] ^ pwS[s2]), R3);
 }
+
+//*****************************************************************************
+//
+// Function -> Rot()
+// Purpose -> Rotate the given value by a set shift
+// Input -> 
+//
+//*****************************************************************************
+word_t  
+rightRot(word_t value, uint32_t shift) {
+  return ((value >> shift) | (value << (32 - shift)));
+} 
 
 //*****************************************************************************
 //
@@ -274,13 +360,20 @@ H(word_t x, word_t y) {
 //
 //*****************************************************************************
 void 
-merge(word_t* pwSbarMrg, uint32_t msgSize, uint32_t mrgDomain) {
-
+merge(word_t* pwSbarMrg, word_t* pwSMrg, uint32_t msgSize, uint32_t mrgDomain) {
+  if (PARALLEL == 1) {
+    pwSMrg = pwSbarMrg;
+  }
+  else {
+  //
+  // TODO Work with P != 1
+  //
+  }
 }
 
 //*****************************************************************************
 //
-// Function -> finalise 
+// Function -> finalise()
 // Purpose -> 
 // Inputs -> word_t* pwSfin[] - Pointer to State; 4x4 matrix of words
 //           nkey_t K - Key
@@ -289,7 +382,7 @@ merge(word_t* pwSbarMrg, uint32_t msgSize, uint32_t mrgDomain) {
 //
 //*****************************************************************************
 void
-finalise(word_t* pwSFin, word_t* K, uint32_t finDomain, word_t outTag) {
+finalise(word_t* pwSFin, word_t* K, uint32_t finDomain, word_t* outTag) {
   pwSFin[15] ^= finDomain;
   F(pwSFin);
 
@@ -307,8 +400,21 @@ finalise(word_t* pwSFin, word_t* K, uint32_t finDomain, word_t outTag) {
   pwSFin[14] ^= K[14];
   pwSFin[15] ^= K[15];
 
-  outTag = right(pwSFin);
+  right(pwSFin, outTag, TAG_LEN);
 }
+
+//***************************************************************************
+//
+// Function -> pad()
+// Purpose -> pad out any values that need padding
+// Inputs -> 
+//
+//***************************************************************************
+//TODO make this do something rather than just return value. Currently place holder
+word_t
+pad(word_t input) {
+  return input;
+} 
 
 //***************************************************************************
 //
@@ -317,10 +423,12 @@ finalise(word_t* pwSFin, word_t* K, uint32_t finDomain, word_t outTag) {
 // Inputs
 // 
 //***************************************************************************
-word_t
-right(word_t* pwSR) {
- word_t rightWord = 0;
-
- return rightWord;
+void
+right(word_t* pwSR, word_t* retVal, uint32_t len) {
+  int i;
+  retVal = 0;
+  for (i = 0; i < len; i++) {
+    retVal[i] = pwSR[i];
+  } 
 }
 

@@ -32,9 +32,9 @@
   //***************************************************************************
   // Defines for block length and rate for 32 bits
   //***************************************************************************
-  #define B        512
-  #define R        384
-  #define C        128
+  #define WIDTH    512
+  #define RATE     384
+  #define CAP      128
 
   //***************************************************************************
   // Define Shifts for G Function for 32 Bits
@@ -81,7 +81,7 @@
   #define WORD_LEN  64              // Word size of 32 bits  
   #define RND_NUM   4               // 4 rounds to be run
   #define PARALLEL  1               // Parallelism degree of 1
-  #define TAG_LEN   4 * WORD_LEN    // Tag size of 4 words
+  #define TAG_LEN   4               // Tag size of 4 words
 
   //***************************************************************************
   // Define Shifts for G Function for 64 Bits
@@ -128,13 +128,13 @@ extern void NORXDec(word_t K[], word_t N[], word_t A[], word_t C[], word_t Z[], 
 // High Level Function Prototypes
 //***************************************************************************
 extern void initialise(word_t* pwKIni, word_t* pwNIni, word_t* pwSIni);
-extern void absorb(word_t* pwSAbs, word_t* pwAZ, uint32_t absDomain);
+extern void absorb(word_t* pwSAbs, word_t* pwAZ, uint32_t AZSize, uint32_t absDomain);
 extern void branch(const word_t* pwSBrch, word_t* pwSBar, 
                    uint32_t msgSize, uint32_t brchDomain);
 extern void encrypt(word_t* pwSbarEnc, word_t* pwM, uint32_t encDomain, word_t* pwC);
 extern void decrypt(word_t* pwSbarDec, word_t* pwC, uint32_t decDomain);
-extern void merge(word_t* pwSbarMrg, uint32_t msgSize, uint32_t mrgDomain);
-extern void finalise(word_t* pwSFin, word_t* K, uint32_t finDomain, word_t outTag);
+extern void merge(word_t* pwSbarMrg, word_t* pwSMrg, uint32_t msgSize, uint32_t mrgDomain);
+extern void finalise(word_t* pwSFin, word_t* K, uint32_t finDomain, word_t* outTag);
 
 //***************************************************************************
 // Permutation Function Prototypes
@@ -143,5 +143,9 @@ extern void F(word_t* pwS);
 extern void diag(word_t* pwS);
 extern void col(word_t* pwS);
 extern void G(word_t* pwS, uint32_t s0, uint32_t s1, uint32_t s2, uint32_t s3);
+extern word_t rightRot(word_t value, uint32_t shift);
 extern word_t H(word_t x, word_t y);
-extern word_t right(word_t* pwSR);
+
+extern word_t pad(word_t input);
+extern void right(word_t* pwSR, word_t* retVal, uint32_t len);
+
