@@ -121,8 +121,8 @@
 //*****************************************************************************
 // Main Algorithm Prototypes
 //*****************************************************************************
-extern void NORXEnc(word_t K[], word_t N[], word_t A[], word_t M[], word_t Z[]);
-extern void NORXDec(word_t K[], word_t N[], word_t A[], word_t C[], word_t Z[], word_t T[]);
+extern void NORXEnc(word_t K[], word_t N[], word_t A[], word_t M[], word_t Z[], word_t C[]);
+extern void NORXDec(word_t K[], word_t N[], word_t A[], word_t C[], word_t Z[], word_t T[], word_t M[]);
 
 //***************************************************************************
 // High Level Function Prototypes
@@ -151,4 +151,5 @@ extern word_t H(word_t x, word_t y);
 //**************************************************************************
 extern word_t pad(word_t input);
 extern void right(word_t* pwSR, word_t* retVal, uint32_t len);
+extern void left(word_t* pwSL, word_t* retVal, uint32_t len);
 

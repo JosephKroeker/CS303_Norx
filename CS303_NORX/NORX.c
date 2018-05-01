@@ -40,32 +40,64 @@ main(void) {
   word_t A[0x80];
   word_t M[0x80];
   word_t Z[0x80];
+  word_t C[0x80];
+  
   int i;
+ 
+  printf("running\n");
   word_t Test[0x10] = { 0 }; // buffer for testing the different functions 
 
+  //TODO test the F with (u0, .. u15) = F(0, .. 15)**2 
+  
+  //
   // Init K to 0x0, 0x1, ... 0xE, 0xF
+  //
   for (i = 0; i <= 0xF; i++) {
     K[i] = i;
   }
+
+  // 
   // Init N to 0x0, 0x1, ... 0x2E, 0x2F 
+  //
   for (i = 0; i <= 0x2F; i++) {
     N[i] = i;
   }
-  printf("Shift test\n%x\n", rightRot(1, 1));
   
+  //
+  // Init A, M, and Z to 0x0, 0x1, ... 0x7E, 0x7F
+  //
+  for (i = 0; i <= 0x7F; i++) {
+    A[i] = i;
+    M[i] = i;
+    Z[i] = i;
+  } 
+
+  //
+  // Run encryption
+  //
+  //NORXEnc(K, N, A, M, Z, C);
+  //printf("done");
+
+  // 
   // Print test key
+  //
   printf("Key : \n");
   for (i=0; i<=0xF; i++) {
     printf("%x ", K[i]);
   } 
 
+  // 
   // Print test Nonce
+  //
   printf("\nNonce : \n");
   for (i = 0; i<= 0x2F; i++) {
     printf("%x ", N[i]);
   } 
 
+    printf("%d \n", sizeof(M) / sizeof(word_t));
+  // 
   // Print test init run
+  //
   // TODO fix this to display given values from NORX instructions
   // TODO test out different round amounts, indexing may be off
   initialise(K, N, Test);
@@ -73,6 +105,46 @@ main(void) {
   for (i=0; i<=0xF; i++) {
     printf("%x ", Test[i]);
   }
+  
+  
+  absorb(Test, A, sizeof(A) / sizeof(word_t), 0x01);
+  printf("\nTest Absorb : \n");
+  for (i=0; i<=0xF; i++) {
+    printf("%x ", Test[i]);
+  }
+
+
+  
+  branch(Test, Test, sizeof(M) / sizeof(word_t) , 0x10);
+  printf("\nTest Branch : \n");
+  for (i=0; i<=0xF; i++) {
+    printf("%x ", Test[i]);
+  }
+
+  encrypt(Test, M, sizeof(M) / sizeof(word_t), 0x02, C);
+   
+  printf("\nTest Encrypt : \n");
+  for (i=0; i<=0xF; i++) {
+    printf("%x ", Test[i]);
+  }
+  printf("\n");
+  for (i=0; i<=0xF; i++) {
+    printf("%x ", C[i]); 
+  } 
+
+  printf("\n Test Merge : \n");
+  merge(Test, Test, sizeof(M) / sizeof(word_t), 0x20);
+  for (i=0; i<=0xF; i++) {
+    printf("%x ", Test[i]);
+  }
+  //
+  // Print the results of the encoding 
+  //
+  //printf("\n Test Enc : \n");
+  //for (i=0; i<=0xF; i++) {
+  //  printf("%x ", C[i]);
+  //} 
+
   return 0;
 }
 
@@ -88,23 +160,40 @@ main(void) {
 //
 //*****************************************************************************
 void 
-NORXEnc(word_t K[], word_t N[], word_t A[], word_t M[], word_t Z[]) {
+NORXEnc(word_t K[], word_t N[], word_t A[], word_t M[], word_t Z[], word_t C[]) {
     word_t S[16] = { 0 };     // State, 4x4 matrix of words
     word_t Sbar[16] = { 0 };  // State bar, 4x4 matrix of words
-    word_t C[16] = { 0 };      // Final encrypted text
     word_t outT[TAG_LEN] = { 0 };   // 4 word tag
+    uint32_t i;
 
-    uint32_t msgSize = sizeof(M) / sizeof(word_t);
-    uint32_t headSize = sizeof(A) / sizeof(word_t);
-    uint32_t footSize = sizeof(Z) / sizeof (word_t);
+    uint32_t msgSize = sizeof(M) * sizeof(word_t);
+    uint32_t headSize = sizeof(A) * sizeof(word_t);
+    uint32_t footSize = sizeof(Z) * sizeof (word_t);
 
+    //
+    // Zero C
+    //
+    printf("%d \n", msgSize);
+    for (i = 0; i < msgSize; i++) {
+      C[i] = 0;
+    } 
+
+    // 
+    // Run encryption
+    //
     initialise(K, N, S);
     absorb(S, A, headSize, 0x01);
+    printf("branch : \n");
     branch(S, Sbar, msgSize , 0x10);
+  printf("Enc : \n");
     encrypt(Sbar, M, msgSize, 0x02, C);
+  printf("Merge : \n");
     merge(Sbar, S, msgSize , 0x20);
+  printf("Absorb : \n");
     absorb(S, Z, footSize, 0x04);
-    finalise(S, K, 0x08, outT);
+  printf("Finalise : \n");
+    //finalise(S, K, 0x08, outT);
+  printf("Done : \n");
 }
 
 //*****************************************************************************
@@ -120,10 +209,9 @@ NORXEnc(word_t K[], word_t N[], word_t A[], word_t M[], word_t Z[]) {
 //
 //*****************************************************************************
 void 
-NORXDec(word_t K[], word_t N[], word_t A[], word_t C[], word_t Z[], word_t T[]) {
+NORXDec(word_t K[], word_t N[], word_t A[], word_t C[], word_t Z[], word_t T[], word_t M[]) {
     word_t S[16] = { 0 };     // State, 4x4 matrix of words
     word_t Sbar[16] = { 0 };  // State bar, 4x4 matrix of words
-    word_t M[16] = { 0 };
     word_t outT[TAG_LEN] = { 0 };   // 4 word tag
 
     uint32_t encSize = sizeof(C) / sizeof(word_t);
@@ -219,7 +307,6 @@ absorb(word_t* pwSAbs, word_t* pwAZ, uint32_t AZSize, uint32_t absDomain) {
   // TODO check functionality, notation is weird in the notesi
   if (AZSize > 0) {
     for (i = 0; i <= m - 2; i++) {
-      
       //
       // Set up X, which is 12 words of pwAZ, and 4 words of 0
       //
@@ -227,8 +314,8 @@ absorb(word_t* pwSAbs, word_t* pwAZ, uint32_t AZSize, uint32_t absDomain) {
         X[j] = pwAZ[k];
         k++;
       } 
-      for (j; j>= 0; j--) {
-        X[j] = 0;
+      for (j; j > 0; j--) {
+        X[j - 1] = 0;
       } 
       
       //
@@ -240,8 +327,8 @@ absorb(word_t* pwSAbs, word_t* pwAZ, uint32_t AZSize, uint32_t absDomain) {
       //
       // XOR S with X
       //
-      for (j = AZSize - 1; j >=0 ; j--) {
-	 pwSAbs[j] ^= X[j];
+      for (j = AZSize; j > 0 ; j--) {
+	 pwSAbs[j - 1] ^= X[j - 1];
       } 
     }
 
@@ -256,7 +343,7 @@ absorb(word_t* pwSAbs, word_t* pwAZ, uint32_t AZSize, uint32_t absDomain) {
       X[j] = pwAZ[k];
       k++;
     } 
-    for (j; j>= 0; j--) {
+    for (j; j > 0; j--) {
       X[j] = 0;
     } 
 
@@ -269,9 +356,9 @@ absorb(word_t* pwSAbs, word_t* pwAZ, uint32_t AZSize, uint32_t absDomain) {
     //
     // XOR S with X padded
     //
-    pad(X);
-    for (j = AZSize - 1; j >= 0; j--)
-      pwSAbs[j] ^= X[j];
+    //pad(X);
+    for (j = AZSize; j > 0; j--)
+      pwSAbs[j - 1] ^= X[j - 1];
   } 
 }
 
@@ -311,12 +398,40 @@ branch(const word_t* pwSBrch, word_t* pwSBar, uint32_t msgSize, uint32_t brchDom
 void
 encrypt(word_t* pwSbarEnc, word_t* pwM, uint32_t msgSize, uint32_t encDomain, word_t* pwC) {
   uint32_t i;
-  uint32_t m = RATE;  // given rate value based on word size
+  uint32_t m = msgSize / 12;  // given rate value based on word size
   uint32_t b = WIDTH;  // given block length for word size
-  uint32_t j = 0;  
+  uint32_t j = 0;
+  uint32_t k = 0;
+  word_t X[0xF] = { 0 };
+  
+  //
+  // check if m needs to be rounded up for padding purposes
+  //
+  if (m * 12 != msgSize) {
+    m++;
+  }
+
+  //
+  // Make sure C is initialized to 0
+  //
+  for (i = 0; i < msgSize; i++) {
+    pwC[i] = 0;
+  }
+
   if (msgSize > 0) {
     for (i = 0; i <= m-2; i++) {
       //
+      // Set up X, which is 12 words of pwAZ, and 4 words of 0
+      //
+      for (j = 15; j > 3; j--) { 
+        X[j] = pwAZ[k];
+        k++;
+      } 
+      for (j; j > 0; j--) {
+        X[j - 1] = 0;
+      } 
+
+      // 
       // Keep index in realm of max state size 
       //
       j = i % (sizeof(pwSbarEnc) / sizeof(word_t));
@@ -327,7 +442,11 @@ encrypt(word_t* pwSbarEnc, word_t* pwM, uint32_t msgSize, uint32_t encDomain, wo
       pwSbarEnc[15] ^= encDomain;
       F(pwSbarEnc);
 
-      
+      //
+      // Left truncate XOR with message 
+      //
+      for (j = 0;
+      left(pwS, 12) ^ X[i]     
       
     }
   }
@@ -499,6 +618,23 @@ word_t
 pad(word_t input) {
   return input;
 } 
+
+//***************************************************************************
+//
+// Function -> left
+// Purpose -> Truncation of bitstring x to its r left-most bits.
+// Inputs
+// 
+//***************************************************************************
+void 
+left(word_t* pwSL, word_t* retVal, uint32_t len) {
+  int i;
+  retVal = 0;
+  uint32_t size = sizeof(pwSL) / sizeof(word_t);
+  for (i = 0; i < len; i++) {
+    retVal[len - i] = pwSL[size - i];
+  } 
+}
 
 //***************************************************************************
 //
