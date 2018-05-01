@@ -131,8 +131,8 @@ extern void initialise(word_t* pwKIni, word_t* pwNIni, word_t* pwSIni);
 extern void absorb(word_t* pwSAbs, word_t* pwAZ, uint32_t AZSize, uint32_t absDomain);
 extern void branch(const word_t* pwSBrch, word_t* pwSBar, 
                    uint32_t msgSize, uint32_t brchDomain);
-extern void encrypt(word_t* pwSbarEnc, word_t* pwM, uint32_t encDomain, word_t* pwC);
-extern void decrypt(word_t* pwSbarDec, word_t* pwC, uint32_t decDomain);
+extern void encrypt(word_t* pwSbarEnc, word_t* pwM, uint32_t msgSize, uint32_t encDomain, word_t* pwC);
+extern void decrypt(word_t* pwSbarDec, word_t* pwC, uint32_t msgSize, uint32_t decDomain, word_t* pwM);
 extern void merge(word_t* pwSbarMrg, word_t* pwSMrg, uint32_t msgSize, uint32_t mrgDomain);
 extern void finalise(word_t* pwSFin, word_t* K, uint32_t finDomain, word_t* outTag);
 
@@ -146,6 +146,9 @@ extern void G(word_t* pwS, uint32_t s0, uint32_t s1, uint32_t s2, uint32_t s3);
 extern word_t rightRot(word_t value, uint32_t shift);
 extern word_t H(word_t x, word_t y);
 
+//**************************************************************************
+// Prototypes for misc. lower level functions 
+//**************************************************************************
 extern word_t pad(word_t input);
 extern void right(word_t* pwSR, word_t* retVal, uint32_t len);
 

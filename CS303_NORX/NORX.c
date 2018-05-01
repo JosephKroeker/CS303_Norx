@@ -37,8 +37,11 @@ int
 main(void) {
   word_t K[0x10];
   word_t N[0x30];
+  word_t A[0x80];
+  word_t M[0x80];
+  word_t Z[0x80];
   int i;
-  word_t Test[0x10]; // buffer for testing the different functions 
+  word_t Test[0x10] = { 0 }; // buffer for testing the different functions 
 
   // Init K to 0x0, 0x1, ... 0xE, 0xF
   for (i = 0; i <= 0xF; i++) {
@@ -98,7 +101,7 @@ NORXEnc(word_t K[], word_t N[], word_t A[], word_t M[], word_t Z[]) {
     initialise(K, N, S);
     absorb(S, A, headSize, 0x01);
     branch(S, Sbar, msgSize , 0x10);
-    encrypt(Sbar, M , 0x02, C);
+    encrypt(Sbar, M, msgSize, 0x02, C);
     merge(Sbar, S, msgSize , 0x20);
     absorb(S, Z, footSize, 0x04);
     finalise(S, K, 0x08, outT);
@@ -120,7 +123,8 @@ void
 NORXDec(word_t K[], word_t N[], word_t A[], word_t C[], word_t Z[], word_t T[]) {
     word_t S[16] = { 0 };     // State, 4x4 matrix of words
     word_t Sbar[16] = { 0 };  // State bar, 4x4 matrix of words
-    word_t outT[4] = { 0 };   // 4 word tag
+    word_t M[16] = { 0 };
+    word_t outT[TAG_LEN] = { 0 };   // 4 word tag
 
     uint32_t encSize = sizeof(C) / sizeof(word_t);
     uint32_t headSize = sizeof(A) / sizeof(word_t);
@@ -129,7 +133,7 @@ NORXDec(word_t K[], word_t N[], word_t A[], word_t C[], word_t Z[], word_t T[]) 
     initialise(K, N, S);
     absorb(S, A, headSize, 0x01);
     branch(S, Sbar, encSize, 0x10);
-    decrypt(Sbar, C, 0x02);
+    decrypt(Sbar, C, encSize, 0x02, M);
     merge(Sbar, S, encSize, 0x20);
     absorb(S, Z, footSize, 0x04);
     finalise(S, K, 0x08, outT);
@@ -146,33 +150,46 @@ NORXDec(word_t K[], word_t N[], word_t A[], word_t C[], word_t Z[], word_t T[]) 
 //*****************************************************************************
 void
 initialise(word_t* pwKIni, word_t* pwNIni, word_t* pwSIni) {
-    int i;
-    pwSIni[0] = pwNIni[0];  
-    pwSIni[1] = pwNIni[1];
-    pwSIni[2] = pwNIni[2];
-    pwSIni[3] = pwNIni[3];
-    pwSIni[4] = pwKIni[0];
-    pwSIni[5] = pwKIni[1];
-    pwSIni[6] = pwKIni[2];
-    pwSIni[7] = pwKIni[3];
-    pwSIni[8] = U8;
-    pwSIni[9] = U9;
-    pwSIni[10] = U10;
-    pwSIni[11] = U11;
-    pwSIni[12] = U12;
-    pwSIni[13] = U13;
-    pwSIni[14] = U14;
-    pwSIni[15] = U15;
+  //
+  // S = N, K, U8 - U15
+  //
+  pwSIni[0] = pwNIni[0];  
+  pwSIni[1] = pwNIni[1];
+  pwSIni[2] = pwNIni[2];
+  pwSIni[3] = pwNIni[3];
+  pwSIni[4] = pwKIni[0];
+  pwSIni[5] = pwKIni[1];
+  pwSIni[6] = pwKIni[2];
+  pwSIni[7] = pwKIni[3];
+  pwSIni[8] = U8;
+  pwSIni[9] = U9;
+  pwSIni[10] = U10;
+  pwSIni[11] = U11;
+  pwSIni[12] = U12;
+  pwSIni[13] = U13;
+  pwSIni[14] = U14;
+  pwSIni[15] = U15;
 
-    pwSIni[12] ^= WORD_LEN;
-    pwSIni[13] ^= RND_NUM; 
-    pwSIni[14] ^= PARALLEL;
-    pwSIni[15] ^= TAG_LEN; 
-    F(pwSIni);
-    pwSIni[12] ^= pwKIni[0];
-    pwSIni[13] ^= pwKIni[1]; 
-    pwSIni[14] ^= pwKIni[2];
-    pwSIni[15] ^= pwKIni[3];
+  //
+  // (12, 13, 14, 15) ^ w, l, p, t
+  //
+  pwSIni[12] ^= WORD_LEN;
+  pwSIni[13] ^= RND_NUM; 
+  pwSIni[14] ^= PARALLEL;
+  pwSIni[15] ^= TAG_LEN;
+
+  //
+  // Run F permutation on S
+  //
+  F(pwSIni);
+  
+  //
+  // (12, 13, 14, 15) ^ K
+  //
+  pwSIni[12] ^= pwKIni[0];
+  pwSIni[13] ^= pwKIni[1]; 
+  pwSIni[14] ^= pwKIni[2];
+  pwSIni[15] ^= pwKIni[3];
 }
 
 //*****************************************************************************
@@ -188,21 +205,74 @@ void
 absorb(word_t* pwSAbs, word_t* pwAZ, uint32_t AZSize, uint32_t absDomain) {
   uint32_t i;
   uint32_t j;
-  uint32_t m = RATE;  // given rate value based on word size
-  // TODO check functionality, notation is weird in the notes
+  uint32_t k = 0;
+  word_t X[0xF] = { 0 };
+  uint32_t m = AZSize / 12;  // split AZ size into 12 word 
+  
+  //
+  // check if m needs to be rounded up for padding purposes
+  //
+  if (m * 12 != AZSize) {
+    m++;
+  }
+
+  // TODO check functionality, notation is weird in the notesi
   if (AZSize > 0) {
     for (i = 0; i <= m - 2; i++) {
+      
+      //
+      // Set up X, which is 12 words of pwAZ, and 4 words of 0
+      //
+      for (j = 15; j > 3; j--) { 
+        X[j] = pwAZ[k];
+        k++;
+      } 
+      for (j; j>= 0; j--) {
+        X[j] = 0;
+      } 
+      
+      //
+      // XOR with domain and run F
+      //
       pwSAbs[15] ^= absDomain;
       F(pwSAbs);
-      for (j = 0; j < AZSize; j++) {
-	 pwSAbs[j] ^= pwAZ[j];
+
+      //
+      // XOR S with X
+      //
+      for (j = AZSize - 1; j >=0 ; j--) {
+	 pwSAbs[j] ^= X[j];
       } 
     }
+
+    //
+    //Last round 
+    //
+    
+    //
+    //Set up X
+    //
+    for (j = 15; k < AZSize; j--) { 
+      X[j] = pwAZ[k];
+      k++;
+    } 
+    for (j; j>= 0; j--) {
+      X[j] = 0;
+    } 
+
+    //
+    // XOR with domain and run F
+    //
     pwSAbs[15] ^= absDomain; 
     F(pwSAbs); 
-    pwSAbs[j + 1] ^= pad(pwAZ[j]);
-  } 
 
+    //
+    // XOR S with X padded
+    //
+    pad(X);
+    for (j = AZSize - 1; j >= 0; j--)
+      pwSAbs[j] ^= X[j];
+  } 
 }
 
 //*****************************************************************************
@@ -216,6 +286,9 @@ absorb(word_t* pwSAbs, word_t* pwAZ, uint32_t AZSize, uint32_t absDomain) {
 //*****************************************************************************
 void 
 branch(const word_t* pwSBrch, word_t* pwSBar, uint32_t msgSize, uint32_t brchDomain) {
+  //
+  // If only one lane of parallelism then just assign Sbar to S
+  //
   if (PARALLEL == 1) {
     pwSBrch = pwSBar;
   } 
@@ -236,15 +309,26 @@ branch(const word_t* pwSBrch, word_t* pwSBar, uint32_t msgSize, uint32_t brchDom
 //
 //*****************************************************************************
 void
-encrypt(word_t* pwSbarEnc, word_t* pwM, uint32_t encDomain, word_t* pwC) {
+encrypt(word_t* pwSbarEnc, word_t* pwM, uint32_t msgSize, uint32_t encDomain, word_t* pwC) {
   uint32_t i;
   uint32_t m = RATE;  // given rate value based on word size
   uint32_t b = WIDTH;  // given block length for word size
   uint32_t j = 0;  
-  if (sizeof(pwM) > 0) {
+  if (msgSize > 0) {
     for (i = 0; i <= m-2; i++) {
+      //
+      // Keep index in realm of max state size 
+      //
       j = i % (sizeof(pwSbarEnc) / sizeof(word_t));
 
+      //
+      // XOR with the domain and run the F permutaion
+      //
+      pwSbarEnc[15] ^= encDomain;
+      F(pwSbarEnc);
+
+      
+      
     }
   }
 }
@@ -259,7 +343,7 @@ encrypt(word_t* pwSbarEnc, word_t* pwM, uint32_t encDomain, word_t* pwC) {
 //
 //*****************************************************************************
 void
-decrypt(word_t* pwSbarDec, word_t* pwC, uint32_t decDomain) {
+decrypt(word_t* pwSbarDec, word_t* pwC, uint32_t msgSize, uint32_t decDomain, word_t* pwM) {
 
 }
 
